@@ -1,105 +1,208 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
-	"github.com/gin-gonic/gin"
+	"github.com/go-sql-driver/mysql"
+	// "github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/jmoiron/sqlx"
+	"github.com/joho/godotenv"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
-// Response adalah struktur untuk repsonse JSON
+// const Database
+
+const (
+	sqlSelectCurrentDate = `SELECT CURRENT_DATE;`
+)
+
+type MYSQLConfig struct {
+	DBHost string
+	DBName string
+	DBUser string
+	DBPass string
+	DBPort string
+	
+}
+
+type MSQLRepository struct {
+	Config *MYSQLConfig
+	db *sqlx.DB
+}
+
+// var (
+// 	env conf.Environment
+// )
+
+
+//struct untuk rerepoonse API
 type Response struct {
 	Status string `json:"status"`
-	Message string `json:"message"`
-	Timestamp string `json:"timestamp"`
+	Message string `json:"message""`
+	Timestamp string `json:"timestamp""`
 }
 
-//REfreshSErver mengelola state dan operasi Refresh
-type RefreshServer struct {
-	refreshQueue chan int64
-	lastRefreshTime int64
-	isRefreshing bool
+//struct untuk Start
+type StartProcessing struct {
+	HitCount int64
+	StopSignal chan bool
+	Running bool
+
 }
 
-func NewRefreshServer() *RefreshServer {
-    return &RefreshServer{
-        refreshQueue:    make(chan int64, 100),
-        isRefreshing:   false,
-        lastRefreshTime: 0,
-    }
-}
-
-// NewRefreshServer membuat instance baru refreshServer
-func NewRefreshHandler() *RefreshServer {
-	return &RefreshServer{
-		refreshQueue: make(chan int64, 100),
-		isRefreshing: false,
-		lastRefreshTime: 0,
+//Inialisasi Proses
+func NewProcessing() *StartProcessing {
+	return &StartProcessing{
+		HitCount: 0,
+		StopSignal: make(chan bool, ),
+		Running: false,
 	}
+
 }
 
-func (s *RefreshServer) StartProcessing() {
-	go func ()  {
-		for timestamp := range s.refreshQueue {
-			s.isRefreshing = true
-			fmt.Println("Starting Refresh Process at UNIX time:", timestamp)
+//function
+func (repo *StartProcessing) Start(c echo.Context) error{
+	repo.Running = false
+	// go func () {
+	// 	for i := 1; i <= 5; i++ {
+	// 		repo.HitCount++
+	// 		log.Println("Hit ke :", repo.HitCount)
+	// 	}
+	// 	repo.StopSignal <- true
+	// 	log.Println("Log Proses")
+	// }()
 
-			time.Sleep(10 * time.Second)
-
-			s.isRefreshing = false
-			fmt.Println("Refresh completed at UNIX time:", time.Now().Unix())
-		}
-	}()
+	return c.JSON(http.StatusCreated, map[string]string{
+		"status":    "success",
+		"message":   "Proses start berjalan!",
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
+	
 }
 
-func (s *RefreshServer) HandleRefresh(c *gin.Context) {
-	currentUnix := time.Now().Unix()
+//func stop
+func (repo *StartProcessing) Stop(c echo.Context) error{
+	repo.Running = false
 
-	//Cek Request Dalam detik yang sama
-	if currentUnix <= s.lastRefreshTime {
-		c.JSON(http.StatusTooManyRequests, gin.H{
-			"error": "Request to frequest, Please wait",
-			"current_time": currentUnix,
-			"last_refresh": s.lastRefreshTime,
+	return c.JSON(http.StatusCreated, map[string]string{
+		"status": "Success",
+		"message": "Proses dihentikan",
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
+}
+
+//func Reload
+func (repo *StartProcessing) Reload(c echo.Context) error{
+	repo.HitCount = 0
+	return c.JSON(http.StatusCreated, map[string]string{
+		"status": "Success",
+		"message": "Nilai Hit telah di reset",
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
+}
+
+//func Healtcheck service
+// func (repo *StartProcessing) Healthcheck(c echo.Context) error{
+// 	repo.Running = false
+
+// 	return c.JSON(http.StatusOK, map[string]string{
+// 		"status": "Healtcheck OK",
+// 		"timestamp": time.Now().Format(time.RFC3339),
+// 	})
+// }
+
+//func Healtcheck with database
+func (repo *MSQLRepository) Healthcheck(c echo.Context) error{
+	// Membentuk DSN (Data Source Name)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
+		// repo.Config.DBUser,
+		// repo.Config.DBPass,
+		// repo.Config.DBHost,
+		// repo.Config.DBPort,
+		// repo.Config.DBName,
+		os.Getenv("DBUser"),
+		os.Getenv("DBPass"),
+		os.Getenv("DBHost"),
+		os.Getenv("DBPort"),
+		os.Getenv("DBName"),
+		
+	)
+	
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		fmt.Println("Database connection error:", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"status": "error",
+			"message": "Failed to Connection DB",
+			"timestamp": time.Now().Format(time.RFC3339),
 		})
-		return
+	}
+	defer db.Close()
+
+	var currentDate string
+	err = db.QueryRow(sqlSelectCurrentDate).Scan(&currentDate)
+	if err != nil {
+		return fmt.Errorf("database health check failed: %v", err)
+
 	}
 
-	//Update waktu refresh terakhir
-	s.lastRefreshTime = currentUnix
+	fmt.Println("Database is healthy, current date:", currentDate)
+	return c.JSON(http.StatusOK, map[string]string{
+		"status":    "success",
+		"message":   "Database is healthy",
+		"date":      currentDate,
+		"timestamp": time.Now().Format(time.RFC3339),
+	})
+	
 
-	//Kirim ke queue dan return response segera
-	select {
-	case s.refreshQueue <- currentUnix:
-		response := Response{
-			Status: "CREATED", //Ubah satatus Menjadi CREATED
-			Message: fmt.Sprint("Refresh Requeste Queued at:", currentUnix),
-			Timestamp: fmt.Sprint(currentUnix),
-		}
-
-		c.JSON(http.StatusCreated, response) //status 201 Created
-	default:
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error":"Refresh Queue is Full",
-			"timestamp": currentUnix,
-		})
-	}
 }
+
 
 func main() {
-	gin.SetMode(gin.ReleaseMode)
-
-	server := NewRefreshServer()
-	server.StartProcessing()
-
-	r := gin.Default()
-
-	//POST /refresh di port 8080
-	r.POST("/refresh", server.HandleRefresh) //Endpoint POST /refresh
-
-	//.... Kode Lainya ....
-
-	fmt.Println("Server Running on Port 8080....")
-	r.Run(":8080")
-}
+	e := echo.New()
+	// Inisialisasi Repository
+	repo := &MSQLRepository{}
+	godotenv.Load()
+	// err := godotenv.Load()
+	// if err != nil {
+	// 	fmt.Println("Error loading .env file:", err)
+	// }
+	// fmt.Println("DB_HOST:", os.Getenv("DBHost"))
+	// fmt.Println("DB_USER:", os.Getenv("DBUser"))
+	// fmt.Println("DB_PASS:", os.Getenv("DBPass"))
+	// fmt.Println("DB_PORT:", os.Getenv("DBPort"))
+	// fmt.Println("DB_NAME:", os.Getenv("DBName"))
 	
+	// envconfig.MustProcess("", &env)
+	
+	// Middeware
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
+
+	server := NewProcessing()
+
+	e.POST("/start", server.Start)
+	e.POST("/stop", server.Stop)
+	e.POST("/reload", server.Reload)
+	// e.GET("/healthcheck", server.Healthcheck)
+	e.GET("/healthcheck", repo.Healthcheck)
+
+	// Jalankan HealthCheck
+	// err := repo.Healthcheck()
+	// if err != nil {
+	// 	fmt.Println("HealthCheck Error:", err)
+	// } else {
+	// 	fmt.Println("Database connection is successful!")
+	// }
+
+	//initial start
+	fmt.Println("execute start")
+
+	fmt.Println("Server running on port 8080....")
+	e.Logger.Fatal(e.Start(":8080"))
+}
