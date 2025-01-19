@@ -8,7 +8,7 @@ RUN go mod download
 COPY . /app
 
 #Build Golang
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o service main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o service healthcheck.go
 
 #Stage 2 Production
 FROM alpine:3.20 AS Production

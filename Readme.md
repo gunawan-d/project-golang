@@ -23,9 +23,6 @@
 ### 2. Service Manager Implementation
 
 
-
-
-
 Task :
 1. Print nilai int (incremental) Setiap 10 seconds, ketika server jalan dia HIT nya ke 
 2. Start Untuk menjelankan
@@ -71,8 +68,12 @@ Tugas ini adalah membuat server sederhana menggunakan **Golang** yang akan mence
 Setelah membaca ini, Anda bisa mulai mengembangkan server menggunakan Golang. Selamat mencoba!
 
 
-
-## 3 Task Healthcheck
+## 3. Task Healthcheck
 
 1. Healtcheck
 2. Healtcheck to DB (Select date) message "Database connected with time"
+
+## 4. Task Disk Healtcheck 
+
+1. Create disk healtcheck
+2. ednpoint method Get hit /disk-health

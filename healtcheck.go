@@ -11,6 +11,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/shirou/gopsutil/v3/disk"
 )
 
 // const Database
@@ -28,7 +29,7 @@ type MYSQLConfig struct {
 	
 }
 
-type MSQLRepository struct {
+type MYSQLRepository struct {
 	Config *MYSQLConfig
 	db *sqlx.DB
 }
@@ -52,6 +53,9 @@ type StartProcessing struct {
 	Running bool
 
 }
+
+type diskHealthCheck struct{}
+
 
 //Inialisasi Proses
 func NewProcessing() *StartProcessing {
@@ -78,7 +82,7 @@ func (repo *StartProcessing) Start(c echo.Context) error{
 	return c.JSON(http.StatusCreated, map[string]string{
 		"status":    "success",
 		"message":   "Proses start berjalan!",
-		"timestamp": time.Now().Format(time.RFC3339),
+		"timestamp": time.Now().Format(time.RFC822),
 	})
 	
 }
@@ -115,7 +119,7 @@ func (repo *StartProcessing) Reload(c echo.Context) error{
 // }
 
 //func Healtcheck with database
-func (repo *MSQLRepository) Healthcheck(c echo.Context) error{
+func (repo *MYSQLRepository) Healthcheck(c echo.Context) error{
 	// Membentuk DSN (Data Source Name)
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
 		// repo.Config.DBUser,
@@ -161,11 +165,36 @@ func (repo *MSQLRepository) Healthcheck(c echo.Context) error{
 }
 
 
+func (repo *diskHealthCheck) health(c echo.Context) error {
+	usage, err := disk.Usage("/")
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Error checking disk usage",
+		})
+	}
+
+	if usage.UsedPercent > 80 {
+		return c.JSON(http.StatusOK, map[string]string{
+			"status":  "critical",
+			"message": fmt.Sprintf("Disk usage critical: %.2f%% used", usage.UsedPercent),
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"status":  "healthy",
+		"message": fmt.Sprintf("Disk usage healthy: %.2f%% used", usage.UsedPercent),
+	})
+}
+
+
 func main() {
 	e := echo.New()
 	// Inisialisasi Repository
-	repo := &MSQLRepository{}
+	repo := &MYSQLRepository{}
 	godotenv.Load()
+	diskRepo := &diskHealthCheck{}
+
+
 	// err := godotenv.Load()
 	// if err != nil {
 	// 	fmt.Println("Error loading .env file:", err)
@@ -190,6 +219,9 @@ func main() {
 	e.POST("/reload", server.Reload)
 	// e.GET("/healthcheck", server.Healthcheck)
 	e.GET("/healthcheck", repo.Healthcheck)
+	e.GET("/disk-health", diskRepo.health)
+
+
 
 	// Jalankan HealthCheck
 	// err := repo.Healthcheck()
