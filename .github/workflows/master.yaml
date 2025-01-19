@@ -35,7 +35,7 @@ jobs:
     - uses: actions/checkout@v4
     # Run TruffleHog inside Docker container
     - name: SCA - Trivy Scan Docker Image
-      continue-on-error: true
+      continue-on-error: false
       run: |
         docker run --rm \
         -v ${{ github.workspace }}:/workspace \
@@ -43,6 +43,16 @@ jobs:
         aquasec/trivy:latest config ./Dockerfile  \
         --exit-code=1 --format json | tee ${{ github.workspace }}/trivy-scan-dockerfile-report.json
   
+  # Scan go.mod for vulnerabilities
+    - name: SCA - Trivy Scan go.mod
+      continue-on-error: false
+      run: |
+        docker run --rm \
+        -v ${{ github.workspace }}:/workspace \
+        -w /workspace \
+        aquasec/trivy:latest fs . \
+        --exit-code=1 --severity HIGH,CRITICAL --format json | tee ${{ github.workspace }}/trivy-scan-gomod-report.json
+
   build:
     runs-on: ubuntu-24.04
     needs: [secret-scanning,sca-docker-scan]
