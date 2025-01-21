@@ -173,7 +173,7 @@ func (repo *diskHealthCheck) health(c echo.Context) error {
 		})
 	}
 
-	if usage.UsedPercent > 80 {
+	if usage.UsedPercent > 90 {
 		return c.JSON(http.StatusOK, map[string]string{
 			"status":  "critical",
 			"message": fmt.Sprintf("Disk usage critical: %.2f%% used", usage.UsedPercent),
