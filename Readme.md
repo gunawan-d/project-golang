@@ -1,6 +1,37 @@
 # Project GO
 
 
+## Introduction
+
+## Method
+
+### Ringkasan HTTP Methods
+
+| Metode   | Tujuan Utama                | Mengubah Resource? | Idempotent |
+|----------|-----------------------------|--------------------|------------|
+| PATCH    | Memperbarui sebagian data   | Ya                 | Tidak      |
+| POST     | Membuat resource baru       | Ya                 | Tidak      |
+| GET      | Membaca data                | Tidak              | Ya         |
+| PUT      | Membuat/Mengganti resource  | Ya                 | Ya         |
+| DELETE   | Menghapus resource          | Ya                 | Ya         |
+| OPTIONS  | Memeriksa metode tersedia   | Tidak              | Ya         |
+| HEAD     | Memeriksa metadata resource | Tidak              | Ya         |
+
+Metode ini digunakan tergantung pada kebutuhan dan tindakan yang ingin dilakukan pada resource di server.
+
+## GET
+- **Purpose**: Mengambil data.
+
+## POST
+- **Purpose**: Membuat data baru.
+
+## PUT
+- **Purpose**: Memperbarui data secara keseluruhan.
+
+## PATCH
+- **Purpose**: Memperbarui sebagian data.
+
+
 ## Description Task
 
 
@@ -77,3 +108,48 @@ Setelah membaca ini, Anda bisa mulai mengembangkan server menggunakan Golang. Se
 
 1. Create disk healtcheck
 2. ednpoint method Get hit /disk-health
+
+
+## 5. Update ID Card API
+
+This is a beginner-friendly project to create a REST API using Go and Echo framework. The API updates the `idcard` column in the `profile` table based on the ID KTP sent in the POST request.
+
+#### Features
+- Endpoint to update ID card (`/update-idcard`)
+- Validates ID KTP length (must be 16 characters)
+- Returns appropriate success or error messages
+
+---
+
+#### Add mysql package manager
+   ```bash
+   go get -u github.com/go-sql-driver/mysql
+   go get -u github.com/labstack/echo/v4
+   ```
+
+#### Output
+```
+{
+    "status": "success",
+    "message": "ID card updated successfully"
+}
+```
+
+## 6. Get Data via Param API
+
+### Endpoint Description
+This API retrieves the ID card information for a specific user based on their `idcard`.
+
+### Endpoint Details
+- **Query Param** : `idcard`
+- **Method**: `GET`
+- **Route**: `/get-users/:idcard`
+- **Parameters**: 
+- `idcard` (path parameter): The unique identifier of the user.
+
+### Example Request
+```http
+GET http://localhost:8080/get-users?idcard=*** HTTP/1.1
+Host: localhost:8080
+```
+
