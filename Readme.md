@@ -120,7 +120,63 @@ API untuk memperbarui kolom `idcard` di tabel `profile` berdasarkan data ID KTP 
 
 ---
 
-### 6. API Get Data via Parameter
+### 6. Create Token with JWT on API
+
+#### Pendahuluan
+Anda diminta untuk membuat sebuah endpoint API yang berfungsi untuk menghasilkan token JWT. Token ini harus dienkripsi menggunakan kunci rahasia dan berisi payload tertentu yang dikirimkan melalui request body.
+
+---
+
+#### Tugas
+
+#### 6.a. Endpoint API Pembuatan Token
+Buatlah endpoint HTTP dengan spesifikasi berikut:
+- **Method:** `POST`
+- **Endpoint:** `/api/create-token`
+- **Request Body:** Mengandung payload data (contoh: `userId` dan `role`).
+- **Respons:** Mengembalikan token JWT yang valid.
+
+#### 6.b. Spesifikasi Token
+- Token harus berisi payload yang dikirimkan melalui request body.
+- Token harus memiliki masa berlaku selama 1 jam.
+- Token harus dienkripsi menggunakan algoritma HMAC-SHA256 dengan kunci rahasia.
+
+---
+
+#### Input & Output yang Diharapkan
+
+#### Contoh Request
+**HTTP Request:**
+
+```http
+POST /api/create-token HTTP/1.1
+Content-Type: application/json
+
+{
+  "userId": 123,
+  "role": "admin"
+}
+```
+Contoh Response
+HTTP Response (200 OK):
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+Jika terdapat error: HTTP Response (400 Bad Request):
+
+
+```json
+{
+  "error": "Failed to create token"
+}
+```
+
+
+### 7. API Get Data via Parameter
 
 #### Deskripsi Endpoint
 API ini mengambil informasi ID card untuk pengguna tertentu berdasarkan parameter `idcard`.
@@ -135,6 +191,73 @@ API ini mengambil informasi ID card untuk pengguna tertentu berdasarkan paramete
 GET http://localhost:8080/get-users?idcard=*** HTTP/1.1
 Host: localhost:8080
 ```
+---
+
+### 8. API Authentication
+#### Deskripsi
+API ini mengelola autentikasi pengguna, termasuk Register, Login, dan Get Profile, menggunakan tabel authentication di basis data.
+
+## Endpoints
+
+#### 8.a. Register
+- **Method**: `POST`  
+- **Route**: `/auth/register`  
+- **Body**:  
+  ```json
+  {
+      "name": "John",
+      "email": "john@example.com",
+      "password": "123456",
+      "photo_url": "http://example.com/photo.jpg"
+  }
+  ```
+- **Response**:  
+  - `201`: User registered.  
+  - `400`: Email already exists.  
 
 ---
+
+#### 8.b. Login
+- **Method**: `POST`  
+- **Route**: `/auth/login`  
+- **Body**:  
+  ```json
+  {
+      "email": "john@example.com",
+      "password": "123456"
+  }
+  ```
+- **Response**:  
+  - `200`: Token returned.  
+  - `401`: Invalid credentials.  
+
+---
+
+#### 8.c. Get Profile
+- **Method**: `GET`  
+- **Route**: `/auth/profile`  
+- **Header**:  
+  `Authorization: Bearer <token>`  
+- **Response**:  
+  - `200`: Profile data.  
+  - `401`: Unauthorized.  
+
+---
+
+#### Instruksi
+a. **Database**: Buat tabel `authentication`:
+   ```sql
+   CREATE TABLE authentication (
+       id SERIAL PRIMARY KEY,
+       name VARCHAR(100) NOT NULL,
+       email VARCHAR(50) NOT NULL UNIQUE,
+       password VARCHAR(100) NOT NULL,
+       photo_url TEXT,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+   );
+   ```
+b. **Implementasi**: Gunakan hashing untuk menyimpan password dan JWT untuk autentikasi.
+c. **Pengujian**: Gunakan Postman atau alat lainnya untuk menguji endpoint.
+
 
