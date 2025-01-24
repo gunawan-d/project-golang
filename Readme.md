@@ -1,9 +1,12 @@
-# Project GO
+# Proyek GO
 
+## Pendahuluan
 
-## Introduction
+Dokumen ini menjelaskan berbagai fitur dan metode yang diterapkan dalam proyek ini, termasuk layanan HTTP, manajemen layanan, health check, dan API untuk memperbarui data ID card.
 
-## Method
+---
+
+## Metode
 
 ### Ringkasan HTTP Methods
 
@@ -17,139 +20,244 @@
 | OPTIONS  | Memeriksa metode tersedia   | Tidak              | Ya         |
 | HEAD     | Memeriksa metadata resource | Tidak              | Ya         |
 
-Metode ini digunakan tergantung pada kebutuhan dan tindakan yang ingin dilakukan pada resource di server.
+Metode HTTP di atas digunakan sesuai dengan kebutuhan dan tindakan yang ingin dilakukan pada resource di server.
 
-## GET
-- **Purpose**: Mengambil data.
+---
 
-## POST
-- **Purpose**: Membuat data baru.
+## Deskripsi Tugas
 
-## PUT
-- **Purpose**: Memperbarui data secara keseluruhan.
+### 1. Layanan HTTP POST /refresh
+Buat layanan HTTP di port **8080** yang menerima permintaan **POST /refresh** dan mengembalikan respons dengan status **"created"**.
 
-## PATCH
-- **Purpose**: Memperbarui sebagian data.
+#### Detail Fitur:
+- Jika proses refresh sedang berjalan, permintaan baru harus **diantrikan**.
+- Jika tidak ada proses refresh yang berjalan, proses refresh harus langsung dimulai.
+- Proses refresh:
+  - Memakan waktu sekitar **10 detik** (gunakan `sleep`).
+  - Hindari mengantrikan permintaan dalam detik yang sama (berdasarkan timestamp Unix).
+  - Catat timestamp kapan permintaan dilakukan.
+- Proses refresh juga harus dijalankan sekali saat aplikasi pertama kali dijalankan.
 
+---
 
-## Description Task
+### 2. Implementasi Service Manager
 
+#### Fitur Utama
+1. Cetak nilai integer (incremental) setiap **10 detik** saat server berjalan.
+2. Endpoint **Start** untuk memulai pencetakan.
+3. Endpoint **Stop** untuk menghentikan proses setelah **10 kali hit**.
+4. Endpoint **Reload** untuk mengatur ulang nilai incremental menjadi **0**.
 
-## Deskripsi:
-### 1. Buatlah sebuah layanan HTTP yang menerima permintaan POST /refresh di port 8080. Layanan ini harus segera mengembalikan respons HTTP dengan status "created".
-
-```bash
- - Jika proses refresh sedang berjalan, permintaan baru harus diantrikan.
- - Jika tidak ada proses refresh yang berjalan, maka harus langsung memulai proses refresh.
- - Detail Proses Refresh:
-
- - Proses refresh memakan waktu sekitar 10 detik untuk selesai (bisa gunakan sleep).
- - Hindari mengantrikan permintaan dalam detik yang sama (berdasarkan timestamp Unix).
- - Setiap refresh harus dijalankan secara berurutan dan mencatat timestamp kapan permintaan dilakukan.
- - Tidak perlu menyimpan antrean setelah restart aplikasi.
- - Proses refresh juga harus dijalankan sekali saat aplikasi pertama kali dijalankan.
-```
-
-
-### 2. Service Manager Implementation
-
-
-Task :
-1. Print nilai int (incremental) Setiap 10 seconds, ketika server jalan dia HIT nya ke 
-2. Start Untuk menjelankan
-3. Stop untuk 10X hit
-4. Reload ketika di reload (nge clear / Reset incremental menjadi 0)
-
-
-### Deskripsi
-Tugas ini adalah membuat server sederhana menggunakan **Golang** yang akan mencetak nilai **incremental** setiap **10 detik** saat server berjalan. Server ini memiliki beberapa fitur utama:
-
-1. **Start** → Memulai proses pencetakan nilai incremental setiap 10 detik.
-2. **Stop** → Menghentikan proses setelah mencapai **10 kali hit**.
-3. **Reload** → Mereset nilai incremental menjadi **0** saat direload.
-
-### Cara Kerja
-1. Saat server dijalankan, nilai **hit** akan dimulai dari **0**.
+#### Cara Kerja
+1. Nilai hit dimulai dari **0** saat server dijalankan.
 2. Setiap **10 detik**, server akan mencetak **Hit ke-X**.
-3. Jika sudah mencapai **10 hit**, server akan otomatis berhenti.
-4. Jika endpoint **reload** dipanggil, nilai **hit** akan kembali menjadi **0**.
+3. Server otomatis berhenti setelah mencapai **10 hit**.
+4. Endpoint **Reload** akan mengatur ulang nilai hit menjadi **0**.
 
-### API Endpoint
-| Method | Endpoint  | Deskripsi |
-|--------|----------|-----------|
-| `POST`  | `/start` | Memulai proses |
-| `POST`  | `/stop`  | Menghentikan proses |
-| `POST`  | `/reload` | Mereset nilai hit menjadi 0 |
+#### API Endpoint
+| Method | Endpoint  | Deskripsi                    |
+|--------|-----------|------------------------------|
+| `POST` | `/start`  | Memulai proses pencetakan    |
+| `POST` | `/stop`   | Menghentikan proses          |
+| `POST` | `/reload` | Mereset nilai hit menjadi 0  |
 
-### Prasyarat
-- Pastikan **Golang** sudah terinstall di komputer Anda.
-- Gunakan **Go modules** untuk mengatur dependency (opsional).
-
-### Cara Menjalankan
-1. Clone repositori ini atau buat file baru **main.go**.
-2. Jalankan perintah berikut untuk menjalankan server:
+#### Langkah-Langkah Menjalankan
+1. Pastikan **Golang** sudah terinstal.
+2. Jalankan server:
    ```sh
    go run main.go
    ```
-3. Akses endpoint melalui browser atau menggunakan `curl`:
+3. Akses endpoint menggunakan browser atau alat seperti `curl`:
    - Mulai server: `http://localhost:8080/start`
    - Stop setelah 10 hit: `http://localhost:8080/stop`
    - Reset hit: `http://localhost:8080/reload`
 
-Setelah membaca ini, Anda bisa mulai mengembangkan server menggunakan Golang. Selamat mencoba!
+---
 
+### 3. Health Check
 
-## 3. Task Healthcheck
-
-1. Healtcheck
-2. Healtcheck to DB (Select date) message "Database connected with time"
-
-## 4. Task Disk Healtcheck 
-
-1. Create disk healtcheck
-2. ednpoint method Get hit /disk-health
-
-
-## 5. Update ID Card API
-
-This is a beginner-friendly project to create a REST API using Go and Echo framework. The API updates the `idcard` column in the `profile` table based on the ID KTP sent in the POST request.
-
-#### Features
-- Endpoint to update ID card (`/update-idcard`)
-- Validates ID KTP length (must be 16 characters)
-- Returns appropriate success or error messages
+#### Fitur
+1. **Health Check Server**:
+   - Endpoint untuk memeriksa status server.
+2. **Health Check Database**:
+   - Melakukan query sederhana (`SELECT NOW()`) untuk memverifikasi koneksi ke database.
+   - Mengembalikan pesan **"Database connected with time"** jika berhasil.
 
 ---
 
-#### Add mysql package manager
+### 4. Disk Health Check
+
+#### Fitur
+- Endpoint untuk memeriksa status disk.
+- Method: **GET**
+- Endpoint: `/disk-health`
+
+---
+
+### 5. API Update ID Card
+
+#### Deskripsi
+API untuk memperbarui kolom `idcard` di tabel `profile` berdasarkan data ID KTP yang dikirim melalui permintaan **POST**.
+
+#### Fitur Utama
+- Validasi panjang ID KTP (harus **16 karakter**).
+- Mengembalikan pesan sukses atau error sesuai kondisi.
+
+#### Langkah-Langkah Instalasi
+1. Tambahkan package berikut:
    ```bash
    go get -u github.com/go-sql-driver/mysql
    go get -u github.com/labstack/echo/v4
    ```
 
-#### Output
-```
+#### Contoh Output
+```json
 {
     "status": "success",
     "message": "ID card updated successfully"
 }
 ```
 
-## 6. Get Data via Param API
+---
 
-### Endpoint Description
-This API retrieves the ID card information for a specific user based on their `idcard`.
+### 6. Create Token with JWT on API
 
-### Endpoint Details
-- **Query Param** : `idcard`
-- **Method**: `GET`
+#### Pendahuluan
+Anda diminta untuk membuat sebuah endpoint API yang berfungsi untuk menghasilkan token JWT. Token ini harus dienkripsi menggunakan kunci rahasia dan berisi payload tertentu yang dikirimkan melalui request body.
+
+---
+
+#### Tugas
+
+#### 6.a. Endpoint API Pembuatan Token
+Buatlah endpoint HTTP dengan spesifikasi berikut:
+- **Method:** `POST`
+- **Endpoint:** `/api/create-token`
+- **Request Body:** Mengandung payload data (contoh: `userId` dan `role`).
+- **Respons:** Mengembalikan token JWT yang valid.
+
+#### 6.b. Spesifikasi Token
+- Token harus berisi payload yang dikirimkan melalui request body.
+- Token harus memiliki masa berlaku selama 1 jam.
+- Token harus dienkripsi menggunakan algoritma HMAC-SHA256 dengan kunci rahasia.
+
+---
+
+#### Input & Output yang Diharapkan
+
+#### Contoh Request
+**HTTP Request:**
+
+```http
+POST /api/create-token HTTP/1.1
+Content-Type: application/json
+
+{
+  "userId": 123,
+  "role": "admin"
+}
+```
+Contoh Response
+HTTP Response (200 OK):
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+Jika terdapat error: HTTP Response (400 Bad Request):
+
+
+```json
+{
+  "error": "Failed to create token"
+}
+```
+
+
+### 7. API Get Data via Parameter
+
+#### Deskripsi Endpoint
+API ini mengambil informasi ID card untuk pengguna tertentu berdasarkan parameter `idcard`.
+
+#### Detail Endpoint
+- **Query Param**: `idcard`
+- **Method**: **GET**
 - **Route**: `/get-users/:idcard`
-- **Parameters**: 
-- `idcard` (path parameter): The unique identifier of the user.
 
-### Example Request
+#### Contoh Request
 ```http
 GET http://localhost:8080/get-users?idcard=*** HTTP/1.1
 Host: localhost:8080
 ```
+---
+
+### 8. API Authentication
+#### Deskripsi
+API ini mengelola autentikasi pengguna, termasuk Register, Login, dan Get Profile, menggunakan tabel authentication di basis data.
+
+## Endpoints
+
+#### 8.a. Register
+- **Method**: `POST`  
+- **Route**: `/auth/register`  
+- **Body**:  
+  ```json
+  {
+      "name": "John",
+      "email": "john@example.com",
+      "password": "123456",
+      "photo_url": "http://example.com/photo.jpg"
+  }
+  ```
+- **Response**:  
+  - `201`: User registered.  
+  - `400`: Email already exists.  
+
+---
+
+#### 8.b. Login
+- **Method**: `POST`  
+- **Route**: `/auth/login`  
+- **Body**:  
+  ```json
+  {
+      "email": "john@example.com",
+      "password": "123456"
+  }
+  ```
+- **Response**:  
+  - `200`: Token returned.  
+  - `401`: Invalid credentials.  
+
+---
+
+#### 8.c. Get Profile
+- **Method**: `GET`  
+- **Route**: `/auth/profile`  
+- **Header**:  
+  `Authorization: Bearer <token>`  
+- **Response**:  
+  - `200`: Profile data.  
+  - `401`: Unauthorized.  
+
+---
+
+#### Instruksi
+a. **Database**: Buat tabel `authentication`:
+   ```sql
+   CREATE TABLE authentication (
+       id SERIAL PRIMARY KEY,
+       name VARCHAR(100) NOT NULL,
+       email VARCHAR(50) NOT NULL UNIQUE,
+       password VARCHAR(100) NOT NULL,
+       photo_url TEXT,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+   );
+   ```
+b. **Implementasi**: Gunakan hashing untuk menyimpan password dan JWT untuk autentikasi.
+c. **Pengujian**: Gunakan Postman atau alat lainnya untuk menguji endpoint.
+
 

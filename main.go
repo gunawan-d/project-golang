@@ -5,13 +5,17 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	_ "github.com/apache/arrow/go/v12/arrow"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	// "github.com/dgrijalva/jwt-go"
+
 )
 
 const (
@@ -19,6 +23,16 @@ const (
 	sqlQueryData = `SELECT name, email, idcard FROM test_profile WHERE email = ?`
 	sqlInsertdataprofile= `INSERT INTO test_profile (name, email, idcard) VALUES (?, ?, ?)`
 )
+
+//Create Token
+type CreateToken struct {
+	userID int `json:"userID"`
+	Name string `json:"name"` 
+	Role string `json:"role"`
+	Token string `json:"token"`
+}
+
+//AuthLogin
 
 type GetUser struct {
 	Name    string `json:"name"`
@@ -104,17 +118,93 @@ func (repo *GetUser) Select(c echo.Context) error {
 			Message: "Failed to Get data",
 		})
 	}
-
 	return c.JSON(http.StatusOK, response)
 
 }
 
+var SECRET_KEY = []byte(os.Getenv("JWT_SECRET"))
+func (repo *CreateToken) CreateToken(payload map[string]interface{}) (string, error) {
+	claims := jwt.MapClaims{
+		"exp": time.Now().Add(time.Hour).Unix(), // Token berlaku selama 1 jam
+		"email": payload["email"],               // Ambil email dari parameter payload
+        "name":  payload["name"],
+		"roleID": payload["roleID"], 
+
+	}
+	if len(SECRET_KEY) == 0 {
+		// log.Fatal("JWT_SECRET is not set")
+		log.Fatalf("JWT_SECRET is not set. Current value: %s", os.Getenv("SECRET_KEY"))
+
+	}
+
+	
+	// Tambahkan payload ke klaim token
+	for key, value := range payload {
+		claims[key] = value
+	}
+
+	// Buat token JWT
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(SECRET_KEY)
+}
+
+func (repo *CreateToken) Create(c echo.Context) error {
+	// Terima dan bind payload dari request body
+	payload := make(map[string]interface{})
+	if err := c.Bind(&payload); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"status":  "error",
+			"message": "Invalid request body, reqruired name, email, roleID",
+		})
+	}
+
+	//Create Payload
+	name, _ := payload["name"].(string)
+	email, _ := payload["email"].(string)
+	roleID, _ := payload["roleID"].(string)
+	
+	// Buat token JWT
+	token, err := repo.CreateToken(payload)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"status":  "error",
+			"message": "Failed to create token",
+		})
+	}
+
+	// Menambahkan custom header pada response
+	c.Response().Header().Set("X-Custom-Header", "CustomHeaderValue")
+	c.Response().Header().Set("Authorization", "Bearer "+token)
+
+	// Kembalikan token ke client
+	return c.JSON(http.StatusOK, map[string]string{
+		"token": token,
+		"status": "Success",
+		"name": name,
+		"email": email,
+		"roleID": roleID,
+	})
+}
+
+//Function Auth Login
+
+
 func main() {
 	e := echo.New()
 	godotenv.Load()
+	
+	
+	//JWT_SECRET
+	SECRET_KEY = []byte(os.Getenv("JWT_SECRET"))
+	if len(SECRET_KEY) == 0 {
+		log.Fatal("JWT_SECRET is not set in .env")
+	}
 
 	// Middleware logging
 	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
+
 
 	fmt.Println("execute start")
 	fmt.Println("Server running on port 8080....")
@@ -134,6 +224,8 @@ func main() {
 
 
 	//Handler List
+	repo := &CreateToken{}
+
 	updateIDCard := &UpdateIDCard{
 		db: db,
 	}
@@ -144,5 +236,11 @@ func main() {
 	//Endpoint List
 	e.GET("/get-users", GetUser.Select)
 	e.PATCH("/update-idcard", updateIDCard.Update)
+	e.POST("/api/create-token", repo.Create)
 	e.Logger.Fatal(e.Start(":8080"))
 }
+
+
+// 1. with body , user email dll
+// 2. Handler menghandle apa saja yang ada di body
+// 3. Create to Claims & output 
